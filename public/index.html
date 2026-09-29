@@ -51,4 +51,66 @@
         </div>
     </div>
 
-    
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const suggestionsBox = document.getElementById('suggestions');
+        let currentFeatures = [];
+
+        searchInput.addEventListener('input', async function() {
+            const query = this.value.trim();
+            if (query.length < 2) { suggestionsBox.style.display = 'none'; return; }
+
+            try {
+                const response = await fetch(`/api/lokasi?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.features && data.features.length > 0) {
+                    currentFeatures = data.features;
+                    suggestionsBox.innerHTML = '';
+                    data.features.forEach((feature, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        div.innerText = feature.place_name || feature.text;
+                        div.onclick = () => selectLocation(index);
+                        suggestionsBox.appendChild(div);
+                    });
+                    suggestionsBox.style.display = 'block';
+                } else {
+                    suggestionsBox.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        });
+
+        function selectLocation(index) {
+            const feature = currentFeatures[index];
+            searchInput.value = feature.place_name || feature.text;
+            suggestionsBox.style.display = 'none';
+            displayFeatureData(feature);
+        }
+
+        function executeSearch() {
+            suggestionsBox.style.display = 'none';
+            if (currentFeatures.length > 0) displayFeatureData(currentFeatures[0]);
+        }
+
+        function displayFeatureData(feature) {
+            const context = feature.context || [];
+            let country = '-', province = '-', district = feature.text || '-';
+
+            context.forEach(item => {
+                if (item.id.startsWith('country')) country = item.text;
+                else if (item.id.startsWith('region') || item.id.startsWith('province')) province = item.text;
+                else if (item.id.startsWith('subdistrict') || item.id.startsWith('district') || item.id.startsWith('municipality')) district = item.text;
+            });
+
+            document.getElementById('resCountry').innerText = country;
+            document.getElementById('resProvince').innerText = province;
+            document.getElementById('resDistrict').innerText = district;
+            document.getElementById('resLongitude').innerText = feature.geometry.coordinates[0].toFixed(4);
+            document.getElementById('resLatitude').innerText = feature.geometry.coordinates[1].toFixed(4);
+        }
+    </script>
+</body>
+</html>
